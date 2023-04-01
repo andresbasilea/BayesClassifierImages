@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
 import Tools
+import Classification
 
 
 class ImageEditor(tk.Frame):
@@ -71,6 +72,7 @@ class ImageEditor(tk.Frame):
 
             i += 1
 
+        Classification.BayesRGB(self.images)
 
 
 

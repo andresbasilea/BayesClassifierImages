@@ -11,7 +11,9 @@ import os
 
 
 def GaussianFilter(image):
-    image_obj = Image.open(image)  
+    image_obj = Image.open(image)
+    newsize = (600,600)
+    image_obj = image_obj.resize(newsize)     
     image_obj = image_obj.filter(ImageFilter.GaussianBlur(radius=5))
     image_obj.save(image.rstrip(".jpg") + ".png")
     return image_obj
@@ -62,8 +64,6 @@ def CropClasses(image, class_num, image_num):
             points = []
             contours = []
 
-    print(list(enumerate(contours)))
-    watch = 0
     # Segment the selected regions and save as separate images
     for i, contour in enumerate(contours):
         mask = np.zeros(img.shape[:2], np.uint8)
