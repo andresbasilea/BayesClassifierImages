@@ -41,34 +41,36 @@ class ImageEditor(tk.Frame):
             self.num_classes = int(self.textbox_classes.get())
             print(self.num_classes)
         i = 0
+        x = 0
         for filename in self.filenames:
+            for x in range(self.num_classes):
+                image = Tools.GaussianFilter(filename)
             
-            image = Tools.GaussianFilter(filename)
-        
-            Tools.CropClasses(filename.rstrip(".jpg")+".png")
+                Tools.CropClasses(filename.rstrip(".jpg")+".png", x+1)
 
-            output_image = f"output_image_{i+1}.png"
-            output_image = Image.open(output_image)
-            newsize = (600,600)
-            output_image = output_image.resize(newsize)
+                output_image = f"output_image_class_{x+1}_{i+1}.png"
+                output_image = Image.open(output_image)
+                newsize = (600,600)
+                output_image = output_image.resize(newsize)
 
-            output_mask = f"output_mask_{i+1}.png"
-            output_mask = Image.open(output_mask)
+                output_mask = f"output_mask_class_{x+1}_{i+1}.png"
+                output_mask = Image.open(output_mask)
 
-            self.images.append(output_image)
-            photo = ImageTk.PhotoImage(output_image)
-            self.images.append(output_mask)
-            photo2 = ImageTk.PhotoImage(output_mask)
-            canvas = tk.Canvas(self, width=1200, height=1200, bg="black")
-            canvas.create_image(0,0, image=photo, anchor="nw")
-            canvas.create_image(601, 0, image=photo2, anchor="nw")
-            canvas.pack()
-            self.canvases.append(canvas)
+                self.images.append(output_image)
+                photo = ImageTk.PhotoImage(output_image)
+                self.images.append(output_mask)
+                photo2 = ImageTk.PhotoImage(output_mask)
+                canvas = tk.Canvas(self, width=1200, height=1200, bg="black")
+                canvas.create_image(0,0, image=photo, anchor="nw")
+                canvas.create_image(601, 0, image=photo2, anchor="nw")
+                canvas.pack()
+                self.canvases.append(canvas)
 
-            canvas.bind("<Button-3>", lambda event: canvas.destroy())
-            canvas.wait_window()
+                canvas.bind("<Button-3>", lambda event: canvas.destroy())
+                canvas.wait_window()
 
             i += 1
+
 
 
 
