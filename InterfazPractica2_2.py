@@ -46,7 +46,7 @@ class ImageEditor(tk.Frame):
             for x in range(self.num_classes):
                 image = Tools.GaussianFilter(filename)
             
-                Tools.CropClasses(filename.rstrip(".jpg")+".png", x+1)
+                Tools.CropClasses(filename.rstrip(".jpg")+".png", x+1, i+1)
 
                 output_image = f"output_image_class_{x+1}_{i+1}.png"
                 output_image = Image.open(output_image)

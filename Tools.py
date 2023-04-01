@@ -17,10 +17,7 @@ def GaussianFilter(image):
     return image_obj
 
 
-
-
 img = None
-
 drawing = False
 points = []
 contours = []
@@ -46,7 +43,7 @@ def draw(event, x, y, flags, param):
             cv2.drawContours(img, [contour], 0, (0, 0, 0), 2)
 
 
-def CropClasses(image, class_num):  
+def CropClasses(image, class_num, image_num):  
     global drawing, points, img, contours
 
     cv2.namedWindow('image')
@@ -89,10 +86,10 @@ def CropClasses(image, class_num):
         
         #print("i:", i, "contour: ", contour, "contours: ", contours)
         # Save cropped image and binary mask
-        if watch == i:
-            cv2.imwrite(f"output_image_class_{class_num}_{i+1}.png", masked_cropped_image)
-            cv2.imwrite(f"output_mask_class_{class_num}_{i+1}.png", binary_mask)
-        
+       
+        cv2.imwrite(f"output_image_class_{class_num}_{image_num}.png", masked_cropped_image)
+        cv2.imwrite(f"output_mask_class_{class_num}_{image_num}.png", binary_mask)
+    
 
     # Close all windows
     cv2.destroyAllWindows()
