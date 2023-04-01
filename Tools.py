@@ -90,7 +90,6 @@ def CropClasses(image):
 
 	# Close all windows
 	cv2.destroyAllWindows()
-	 
 
 
 
