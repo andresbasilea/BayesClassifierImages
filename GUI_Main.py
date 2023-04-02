@@ -24,7 +24,7 @@ class ImageEditor(tk.Frame):
         self.master.configure()
         self.pack()
 
-        self.bg_image = tk.PhotoImage(file="background3.png")
+        self.bg_image = tk.PhotoImage(file="Extras/background3.png")
         self.bg_label = tk.Label(root, image=self.bg_image)
         self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
