@@ -1,15 +1,40 @@
 import cv2
 import numpy as np
+import numpy as np
+from PIL import Image
+import numpy as np
+from scipy.ndimage import gaussian_filter
+from PIL import Image
+from PIL import Image, ImageFilter
+import cv2
+import numpy as np
+import os
 
-# Define the number of classes
+
+def GaussianFilter(image):
+    image_obj = Image.open(image)
+    newsize = (600,600)
+    image_obj = image_obj.resize(newsize)     
+    image_obj = image_obj.filter(ImageFilter.GaussianBlur(radius=5))
+    image_obj.save(image.rstrip(".jpg") + ".png")
+    return image_obj
+
+
+
+
 NUM_CLASSES = 3
 
 # Define the colors for each class
 COLORS = [
     (0, 255, 0),  # Green
     (0, 0, 255),  # Red
-    (255, 0, 0)   # Blue
+    (255, 0, 0)
+    # (255,0,255),
+    # (210,180,140),
+    # (218,165,32),
+    # (64,224,208)  # Blue
 ]
+
 
 # Define the variables for the user drawing
 drawing = False
@@ -32,15 +57,17 @@ def draw(event, x, y, flags, param):
         contours[class_num].append(np.array(points))
         points = []
 
-def main():
-    global class_num
+def Mask_Colors(filename, image_num):
+    global class_num, contours
 
     # Load the image
-    img = cv2.imread('Entrenamiento3.png')
+    img = cv2.imread(filename)
 
     # Create a black mask for each class
     masks = [np.zeros(img.shape[:2], np.uint8) for _ in range(NUM_CLASSES)]
 
+    class_num = 0
+    contours = [[] for _ in range(NUM_CLASSES)]
     # Display the image and let the user draw contours
     cv2.namedWindow('image')
     cv2.setMouseCallback('image', draw)
@@ -75,6 +102,10 @@ def main():
         elif key == ord('p'):
             # Switch to the previous class
             class_num = (class_num - 1) % NUM_CLASSES
+        elif key == ord('r'):
+            img = cv2.imread(filename)
+            points = []
+            contours = []
         elif key == ord('s'):
             # Save the results
             output = np.zeros(img.shape, dtype=np.uint8)
@@ -82,10 +113,21 @@ def main():
                 color = COLORS[i]
                 output += cv2.bitwise_and(img, img, mask=mask)
                 output[mask > 0] = color
-            cv2.imwrite('output.png', output)
+            cv2.imwrite(f'All_Masks_{image_num}.png', output)
+
+            # Save the results
+            for i, contour_list in enumerate(contours):
+                color = COLORS[i]
+                for j, contour in enumerate(contour_list):
+                    mask = np.zeros(img.shape[:2], np.uint8)
+                    cv2.drawContours(mask, [contour], -1, 255, -1)
+                    masked_img = cv2.bitwise_and(img, img, mask=mask)
+                    x, y, w, h = cv2.boundingRect(contour)
+                    cropped_img = masked_img[y:y+h, x:x+w]
+                    cv2.imwrite(f"Class_{i+1}_Contour_{j+1}_{image_num}.png", cropped_img)
+
 
     # Clean up
     cv2.destroyAllWindows()
 
-if __name__ == '__main__':
-    main()
+# Mask_Colors("Entrenamiento2.png")

@@ -3,6 +3,7 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 import Tools
 import Classification
+import Tools2
 
 
 class ImageEditor(tk.Frame):
@@ -43,35 +44,38 @@ class ImageEditor(tk.Frame):
         i = 0
         x = 0
         for filename in self.filenames:
-            for x in range(self.num_classes):
-                image = Tools.GaussianFilter(filename)
-            
-                Tools.CropClasses(filename.rstrip(".jpg")+".png", x+1, i+1)
+            # for x in range(self.num_classes):
+            image = Tools.GaussianFilter(filename)
+        
+            # Tools.CropClasses(filename.rstrip(".jpg")+".png", x+1, i+1)
+            Tools2.Mask_Colors(filename.rstrip(".jpg")+".png", i)
 
-                output_image = f"output_image_class_{x+1}_{i+1}.png"
-                output_image = Image.open(output_image)
-                newsize = (400,400)
-                output_image = output_image.resize(newsize)
+            # output_image = f"Class_{i+1}_Contour_{j+1}.png"
+            # output_image = Image.open(output_image)
+            # newsize = (400,400)
+            # output_image = output_image.resize(newsize)
 
-                output_mask = f"output_mask_class_{x+1}_{i+1}.png"
-                output_mask = Image.open(output_mask)
+            # output_mask = f"output_mask_class_{x+1}_{i+1}.png"
+            # output_mask = Image.open(output_mask)
 
-                self.images.append(output_image)
-                photo = ImageTk.PhotoImage(output_image)
-                self.images.append(output_mask)
-                photo2 = ImageTk.PhotoImage(output_mask)
-                canvas = tk.Canvas(self, width=1200, height=1200)
-                canvas.create_image(100,100, image=photo, anchor="nw")
-                canvas.create_image(601, 100, image=photo2, anchor="nw")
-                canvas.pack()
-                self.canvases.append(canvas)
+            # self.images.append(output_image)
+            # photo = ImageTk.PhotoImage(output_image)
+            # self.images.append(output_mask)
+            # photo2 = ImageTk.PhotoImage(output_mask)
+            # canvas = tk.Canvas(self, width=1200, height=1200)
+            # canvas.create_image(100,100, image=photo, anchor="nw")
+            # canvas.create_image(601, 100, image=photo2, anchor="nw")
+            # canvas.pack()
+            # self.canvases.append(canvas)
 
-                canvas.bind("<Button-3>", lambda event: canvas.destroy())
-                canvas.wait_window()
+            # canvas.bind("<Button-3>", lambda event: canvas.destroy())
+            # canvas.wait_window()
 
             i += 1
 
-        Classification.BayesRGB(self.images, self.num_classes) 
+
+
+        # Classification.BayesRGB(self.images, self.num_classes) 
 
 
 
