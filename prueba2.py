@@ -18,7 +18,7 @@ import numpy as np
 from skimage import io, color, filters, morphology, measure
 
 # Load the image
-image = io.imread('Entrenamiento2.png')
+image = io.imread('Entrenamiento3.png')
 
 # Convert the image to grayscale
 gray = color.rgb2gray(image)
@@ -28,7 +28,7 @@ thresh = filters.threshold_otsu(gray)
 mask = gray > thresh
 
 # Apply morphological operations to clean up the mask
-mask = morphology.remove_small_objects(mask, min_size=300)
+mask = morphology.remove_small_objects(mask, min_size=500)
 mask = morphology.closing(mask, morphology.square(5))
 
 # Find the contours of each object in the mask

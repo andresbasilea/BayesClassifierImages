@@ -65,20 +65,23 @@ def CropClasses(image, class_num, image_num):
             contours = []
 
     # Segment the selected regions and save as separate images
+    x = 0
     for i, contour in enumerate(contours):
         mask = np.zeros(img.shape[:2], np.uint8)
-        cv2.drawContours(mask, [contour], 0, 255, -1)
+        cv2.drawContours(mask, [contour], -1, 50+x, -1)
         result = cv2.bitwise_and(img, img, mask=mask)
+        
         x, y, w, h = cv2.boundingRect(contour)
         cropped_image = result[y:y+h, x:x+w]
         
         # Create a mask with only the cropped area
         mask = np.zeros(cropped_image.shape[:2], np.uint8)
-        cv2.drawContours(mask, [contour - contour.min(axis=0)], 0, 255, -1)
+        cv2.drawContours(mask, [contour - contour.min(axis=0)], -1, 50+x, -1)
         
         # Apply the mask to the cropped image
         masked_cropped_image = cv2.bitwise_and(cropped_image, cropped_image, mask=mask)
         
+
         # Create binary mask with cropped region as white
         binary_mask = np.zeros(img.shape[:2], np.uint8)
         binary_mask[y:y+h, x:x+w] = mask
@@ -89,7 +92,12 @@ def CropClasses(image, class_num, image_num):
        
         cv2.imwrite(f"output_image_class_{class_num}_{image_num}.png", masked_cropped_image)
         cv2.imwrite(f"output_mask_class_{class_num}_{image_num}.png", binary_mask)
-    
+        x+=50
+
+
+
+
+
 
     # Close all windows
     cv2.destroyAllWindows()

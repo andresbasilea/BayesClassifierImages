@@ -50,7 +50,7 @@ class ImageEditor(tk.Frame):
 
                 output_image = f"output_image_class_{x+1}_{i+1}.png"
                 output_image = Image.open(output_image)
-                newsize = (600,600)
+                newsize = (400,400)
                 output_image = output_image.resize(newsize)
 
                 output_mask = f"output_mask_class_{x+1}_{i+1}.png"
@@ -60,9 +60,9 @@ class ImageEditor(tk.Frame):
                 photo = ImageTk.PhotoImage(output_image)
                 self.images.append(output_mask)
                 photo2 = ImageTk.PhotoImage(output_mask)
-                canvas = tk.Canvas(self, width=1200, height=1200, bg="black")
-                canvas.create_image(0,0, image=photo, anchor="nw")
-                canvas.create_image(601, 0, image=photo2, anchor="nw")
+                canvas = tk.Canvas(self, width=1200, height=1200)
+                canvas.create_image(100,100, image=photo, anchor="nw")
+                canvas.create_image(601, 100, image=photo2, anchor="nw")
                 canvas.pack()
                 self.canvases.append(canvas)
 
