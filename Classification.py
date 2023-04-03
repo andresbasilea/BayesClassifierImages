@@ -9,12 +9,30 @@ from skimage.color import *
 import numpy as np
 import pprint
 import pandas as pd
+import os
 
 
 
-def BayesRGB(images, num_classes):
+
+def BayesRGB(monkey_fruit):
     
-    
+    if monkey_fruit == 1: # monkey images to classify
+
+        print("ho")
+
+
+    elif monkey_fruit == 2: # fruit images to classify
+
+        print('h')
+
+    else:
+        print("Error")
+
+
+
+
+
+
     num_images_file = num_classes * 2
 
 
@@ -56,7 +74,7 @@ def BayesRGB(images, num_classes):
         print(f"\n\nClase {x+1} RGB DataFrame:\n ",df_rgb_means)
         print(f"\nClass {x+1} mean matrix: \n", df_rgb_means.mean())
         print(f"\nClass {x+1} cov matrix: \n", df_rgb_means.cov())
-        
+
 
 
 
@@ -193,3 +211,208 @@ def BayesRGB(images, num_classes):
 # #Covarianza
 # covariance = dfsize.cov()
 # print("\nMatriz de Covarianza:\n", covariance)
+
+
+
+
+
+import glob
+import numpy as np
+import pandas as pd
+
+def obtenerProbAPriori(datos_y, n_clases : int):
+    data_shape = datos_y.shape
+    print(data_shape)
+    total_datos = np.multiply.reduce(data_shape)
+    print("total_datos: " , total_datos)
+    hist = np.histogram(datos_y.reshape(1, total_datos), 
+                    bins=n_clases, 
+                    range=[0,n_clases-1])
+    prob = hist[0].astype(np.long) / total_datos
+    print(prob)
+
+    plt.bar(range(n_clases), hist[0], align='center')
+    plt.xticks(range(n_clases))
+    plt.xlabel('Class')
+    plt.ylabel('Count')
+    plt.title('Histogram of class frequencies')
+    plt.show()
+
+
+    return prob
+
+
+filelist = glob.glob("OutputFruits/All_Masks_*.png")
+x = np.array([np.array(Image.open(fname)) for fname in filelist])
+nz = np.nonzero(x)
+rows = np.unique(nz[0])
+print(rows)
+print(len(rows), "x: ",len(x))
+# x_flat = x.reshape(8,-1)
+# df = pd.DataFrame(x_flat)
+# df.to_excel("data.xlsx", index=False)
+
+image =  Image.open("OutputFruits/All_Masks_1.png")
+
+
+
+data_img = np.array(image)
+
+prob = obtenerProbAPriori(x, 4)
+print(prob)
+
+
+
+
+
+# PROBABILIDAD A PRIORI FUNCIONANDO
+
+import numpy as np
+import cv2
+import os
+
+# Define the path to your training images
+path = "OutputFruits/"
+
+# Define the number of classes
+num_classes = 3
+
+# Create an array to store the count of pixels for each class
+class_counts = np.zeros(num_classes)
+
+# Loop through each training image
+for filename in os.listdir(path):
+    if "All_Masks_" in filename:
+        # Load the image
+        img = cv2.imread(os.path.join(path, filename))
+
+        # Extract the mask of each color
+        red_mask = ((img[:, :, 2] == 255).astype(int))/2
+        blue_mask = ((img[:, :, 0] == 255).astype(int))/3
+        green_mask = ((img[:, :, 1] == 255).astype(int))/3
+
+        # Add the count of pixels for each class
+        class_counts[0] += np.sum(red_mask)
+        class_counts[1] += np.sum(blue_mask)
+        class_counts[2] += np.sum(green_mask)
+
+# Calculate the total number of pixels in all masks
+total_pixels = np.sum(class_counts)
+
+# Calculate the prior probability of each class
+class_probs = class_counts / total_pixels
+
+print("Prior probability of red class:", class_probs[0])
+print("Prior probability of blue class:", class_probs[1])
+print("Prior probability of green class:", class_probs[2])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# import numpy as np
+# import glob
+# from PIL import Image
+
+# # Define the classes you want to classify
+# classes = ["Fruit1", "Fruit2"]
+
+# # Load the dataset of images composed of masks for each class
+# data = []
+# for class_name in classes:
+#     file_list = glob.glob(f"OutputFruits/All_Masks_*.png")
+#     for file_path in file_list:
+#         img = Image.open(file_path)
+#         data.append((class_name, img))
+
+# # Preprocess the dataset by converting each image to a feature vector
+# X = []
+# y = []
+# for class_name, img in data:
+#     pixels = np.array(img)
+#     mask = (pixels[:, :, 1] == 255)
+#     freqs = np.bincount(mask.ravel(), minlength=2)
+#     feature_vec = freqs / np.sum(freqs)
+#     X.append(feature_vec)
+#     y.append(class_name)
+# X = np.array(X)
+# y = np.array(y)
+
+# # Split the preprocessed dataset into training and testing sets
+# n_train = int(0.8 * len(X))
+# X_train, y_train = X[:n_train], y[:n_train]
+# X_test, y_test = X[n_train:], y[n_train:]
+
+# # Estimate the prior probability of each class
+# prior = {}
+# for class_name in classes:
+#     prior[class_name] = np.mean(y_train == class_name)
+
+# # Estimate the conditional probability of each pixel value given each class
+# cond_prob = {}
+# for class_name in classes:
+#     mask = (y_train == class_name)
+#     freqs = np.mean(X_train[mask], axis=0)
+#     cond_prob[class_name] = (freqs + 1) / (np.sum(mask) + 2)  # Laplace smoothing
+
+# # Classify each image in the testing set using Bayesian Naive inference
+# y_pred = []
+# for i in range(len(X_test)):
+#     probs = {}
+#     for class_name in classes:
+#         p = prior[class_name]
+#         for j in range(len(X_test[i])):
+#             if X_test[i][j] == 0:
+#                 p *= 1 - cond_prob[class_name][j]
+#             else:
+#                 p *= cond_prob[class_name][j]
+#         probs[class_name] = p
+#     y_pred.append(max(probs, key=probs.get))
+
+# # Evaluate the performance of the classifier
+# print(y_pred)
+# accuracy = np.mean(y_pred == y_test)
+# print(f"Accuracy: {accuracy}")
