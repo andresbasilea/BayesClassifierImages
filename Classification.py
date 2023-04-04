@@ -220,46 +220,46 @@ import glob
 import numpy as np
 import pandas as pd
 
-def obtenerProbAPriori(datos_y, n_clases : int):
-    data_shape = datos_y.shape
-    print(data_shape)
-    total_datos = np.multiply.reduce(data_shape)
-    print("total_datos: " , total_datos)
-    hist = np.histogram(datos_y.reshape(1, total_datos), 
-                    bins=n_clases, 
-                    range=[0,n_clases-1])
-    prob = hist[0].astype(np.long) / total_datos
-    print(prob)
+# def obtenerProbAPriori(datos_y, n_clases : int):
+#     data_shape = datos_y.shape
+#     print(data_shape)
+#     total_datos = np.multiply.reduce(data_shape)
+#     print("total_datos: " , total_datos)
+#     hist = np.histogram(datos_y.reshape(1, total_datos), 
+#                     bins=n_clases, 
+#                     range=[0,n_clases-1])
+#     prob = hist[0].astype(np.long) / total_datos
+#     print(prob)
 
-    plt.bar(range(n_clases), hist[0], align='center')
-    plt.xticks(range(n_clases))
-    plt.xlabel('Class')
-    plt.ylabel('Count')
-    plt.title('Histogram of class frequencies')
-    plt.show()
-
-
-    return prob
+#     plt.bar(range(n_clases), hist[0], align='center')
+#     plt.xticks(range(n_clases))
+#     plt.xlabel('Class')
+#     plt.ylabel('Count')
+#     plt.title('Histogram of class frequencies')
+#     plt.show()
 
 
-filelist = glob.glob("OutputFruits/All_Masks_*.png")
-x = np.array([np.array(Image.open(fname)) for fname in filelist])
-nz = np.nonzero(x)
-rows = np.unique(nz[0])
-print(rows)
-print(len(rows), "x: ",len(x))
-# x_flat = x.reshape(8,-1)
-# df = pd.DataFrame(x_flat)
-# df.to_excel("data.xlsx", index=False)
-
-image =  Image.open("OutputFruits/All_Masks_1.png")
+#     return prob
 
 
+# filelist = glob.glob("OutputFruits/All_Masks_*.png")
+# x = np.array([np.array(Image.open(fname)) for fname in filelist])
+# nz = np.nonzero(x)
+# rows = np.unique(nz[0])
+# print(rows)
+# print(len(rows), "x: ",len(x))
+# # x_flat = x.reshape(8,-1)
+# # df = pd.DataFrame(x_flat)
+# # df.to_excel("data.xlsx", index=False)
 
-data_img = np.array(image)
+# image =  Image.open("OutputFruits/All_Masks_1.png")
 
-prob = obtenerProbAPriori(x, 4)
-print(prob)
+
+
+# data_img = np.array(image)
+
+# prob = obtenerProbAPriori(x, 4)
+# print(prob)
 
 
 
@@ -309,10 +309,169 @@ print("Prior probability of green class:", class_probs[2])
 
 
 
+# import glob
+# import cv2
+# import numpy as np
+
+# # Define the file pattern to match
+# file_pattern = "OutputFruits/Class_*_*"
+
+# # Get the file list
+# file_list = glob.glob(file_pattern)
+
+# # Define the number of classes
+# n_classes = 3
+
+# # Initialize the mean matrix for each class
+# mean_matrices = [np.zeros((3, 3), dtype=np.float32) for _ in range(n_classes)]
+
+# # Loop over each file and calculate the mean matrix for each class
+# for file_path in file_list:
+#     # Extract the class number from the file name
+#     class_num = int(file_path.split("_")[1]) - 1
+    
+#     # Read the image
+#     img = cv2.imread(file_path)
+    
+#     # Calculate the mean matrix for the image
+#     mean_matrix = np.mean(img, axis=(0, 1))
+    
+#     # Add the mean matrix to the corresponding class
+#     mean_matrices[class_num] += mean_matrix
+
+# # Divide each mean matrix by the number of images in the corresponding class to get the final mean matrix for each class
+# for i in range(n_classes):
+#     mean_matrices[i] /= len(file_list)
+
+# # Print the final mean matrices for each class
+# for i in range(n_classes):
+#     print(f"Mean matrix for Class {i+1}:")
+#     print(mean_matrices[i])
 
 
 
 
+
+
+# OBTENCION DE LA MATRIZ DE MEDIAS FUNCIONANDO 
+
+
+file_pattern = "OutputFruits/Class_*_*"
+
+# Get the file list
+file_list = glob.glob(file_pattern)
+
+# print(file_list)
+
+c1 = []
+c2 = []
+c3 = []
+for image in file_list:
+    if "Class_1" in image:
+        c1.append(image)
+    elif "Class_2" in image:
+        c2.append(image)
+    elif "Class_3" in image:
+        c3.append(image)
+
+num_images_per_class = [c1, c2, c3]
+#print(num_images_per_class)
+n_classes = 3
+
+# Initialize the mean matrix for each class
+# mean_matrices = [np.zeros((1, 3), dtype=np.float32) for _ in range(n_classes)]
+
+
+RGB_class_list = []
+x=0
+for class_list in num_images_per_class:
+    print(class_list)
+    df_rgb_means = []
+    for image in class_list:
+        #print(image)
+        image = image.replace("\\", "/")
+        # print(image)
+        image = cv2.imread(image)
+        image_array = np.array(image)
+        # print(image_array)
+        reshaped_array = image_array.reshape(-1,3)
+        df = pd.DataFrame(reshaped_array, columns=['B','G','R'])
+        df_rgb_means.append(df)
+
+    df_rgb_means = pd.concat(df_rgb_means)
+    df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
+    RGB_class_list.append([df_rgb_means.mean(),df_rgb_means.cov()])
+    x+=1
+
+    print(f"\n\nClase {x} RGB DataFrame:\n ",df_rgb_means)
+    print(f"\nClass {x} mean matrix: \n", df_rgb_means.mean())
+    print(f"\nClass {x} cov matrix: \n", df_rgb_means.cov())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#     class_num = int(file_path.split('_')[1])-1
+
+#     img = cv2.imread(file_path)
+
+#     non_black = img.any(axis=-1)
+#     mean_matrix = np.mean(img[non_black], axis=(0))
+
+#     if np.sum(mean_matrix)>0:
+#         mean_matrices[class_num] += mean_matrix
+
+
+# for i in range(n_classes):
+#     mean_matrices[i] /= num_images_per_class[i]
+
+
+# for i in range(n_classes):
+#     print(f'Mean matrix for class {i+1}:')
+#     print(mean_matrices[i])
+ 
+
+
+# for imageRGB, imageMask in zip(images[0::2], images[1::2]):
+#     pixelsRGB, pixelsMask = list(imageRGB.getdata()),list(imageMask.getdata())
+#     #pixelsRGB, pixelsMask = imageRGB,imageMask
+#     dic[f'Clase_{i%num_classes+1}_RGB'].append(pixelsRGB)
+#     dic[f'Clase_{i%num_classes+1}_Mask'].append(pixelsMask)
+#     i += 1
+
+
+# print(len([v for k,v in dic.items() if 'RGB' in k]))
+
+# RGB_class_list = []
+# for x in range(num_classes):
+#     RGB_class = [v for k,v in dic.items() if f'{x+1}_RGB' in k]
+#     Mask_class = [v for k,v in dic.items() if f'{x+1}_Mask' in k]
+#     df_rgb_means = []
+#     for image in RGB_class:
+#         image_array = np.array(image)
+#         reshaped_array = image_array.reshape(-1,3)
+#         df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
+#         df_rgb_means.append(df)
+
+#     df_rgb_means = pd.concat(df_rgb_means)
+#     df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
+#     RGB_class_list.append([df_rgb_means.mean(),df_rgb_means.cov()])
+
+#     print(f"\n\nClase {x+1} RGB DataFrame:\n ",df_rgb_means)
+#     print(f"\nClass {x+1} mean matrix: \n", df_rgb_means.mean())
+#     print(f"\nClass {x+1} cov matrix: \n", df_rgb_means.cov())
 
 
 
