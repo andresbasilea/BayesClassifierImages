@@ -382,7 +382,8 @@ n_classes = 3
 # mean_matrices = [np.zeros((1, 3), dtype=np.float32) for _ in range(n_classes)]
 
 
-RGB_class_list = []
+RGB_class_list_covs = []
+RGB_class_list_means = []
 x=0
 for class_list in num_images_per_class:
     print(class_list)
@@ -400,13 +401,144 @@ for class_list in num_images_per_class:
 
     df_rgb_means = pd.concat(df_rgb_means)
     df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
-    RGB_class_list.append([df_rgb_means.mean(),df_rgb_means.cov()])
+    
     x+=1
 
     print(f"\n\nClase {x} RGB DataFrame:\n ",df_rgb_means)
     print(f"\nClass {x} mean matrix: \n", df_rgb_means.mean())
     print(f"\nClass {x} cov matrix: \n", df_rgb_means.cov())
 
+    rgb_means = df_rgb_means.to_numpy()
+
+    cov_matrix = np.cov(rgb_means, rowvar=False)
+    mean_matrix = np.mean(rgb_means, axis=0)
+
+    RGB_class_list_covs.append(cov_matrix)
+    RGB_class_list_means.append(mean_matrix)
+
+
+print("Covs: \n\n", RGB_class_list_covs)
+print("\n\nMeans: \n\n", RGB_class_list_means)
+
+
+# Matriz de covarianzas
+
+
+
+det_covs = np.array([np.linalg.det(RGB_class_list_covs[k]) for k in range(n_classes)])
+
+#%%
+covs_inv = np.zeros_like(RGB_class_list_covs)
+for k in range(n_classes):
+    covs_inv[k] = np.linalg.inv(np.matrix(RGB_class_list_covs[k]))
+
+
+print("\n\ndet-covs", det_covs,"\n\n\n")
+print("inverse-cov", covs_inv, "\n\n\n")
+
+
+
+
+def disc_bayes(x, m, SI, detS, Pk):
+    temp = np.matrix(x-m)
+    # print(temp.shape)
+    SI = np.matrix(SI)
+    # print(SI.shape)
+    temp2 = np.matmul(temp, SI)
+    # print(temp2.shape)
+    # temp3 = np.matmul(temp2, temp.T).item()
+    temp3 = (temp2.dot(temp.T))[0,0].item()
+    # print(temp3.shape)
+    #print(temp3)
+    disc = -(1.0/2.0)*temp3-(1.0/2.0)*np.log(detS)+np.log(Pk)
+    #print(disc)
+    return disc.item()
+
+def predecir(datos_x, modelo):
+    datos_shape = datos_x.shape
+    #datos_x.reshape(datos_shape[0]*datos_shape[1], datos_shape[2])
+    prediccion_y = np.empty_like(datos_x[:,:,0]).astype(np.uint8)
+    discr = np.empty(len(modelo['clases'])).astype(np.float64)
+    for i in range(datos_shape[0]):
+        for j in range(datos_shape[1]):
+            for k in modelo['clases']:
+                x=datos_x[i,j]
+                m=modelo['medias'][k]
+                S=modelo['covarianza'][k]
+                SI=modelo['inverse-cov'][k]
+                detS=modelo['det_covs'][k]
+                pk=modelo['apriori'][k]
+                discr[k] = disc_bayes(x, m, SI, detS, pk)
+            prediccion_y[i,j] = discr.argmax()
+            #print(prediccion_y[i,j])
+    return prediccion_y
+
+
+clases = {0:'banana', 1:'huevo', 2:'chile'}
+
+modelo = {  
+    'clases':clases,
+    'apriori': class_probs,
+    'medias':RGB_class_list_means,
+    'covarianza': RGB_class_list_covs,
+    'det_covs': det_covs,
+    'inverse-cov': covs_inv
+}
+
+
+file_pattern = "ImagenesPrueba/Prueba*.jpg"
+
+# Get the file list
+file_list = glob.glob(file_pattern)
+# file_list = file_list.replace("\\", "/")
+print(file_list)
+
+datos_x = np.array([np.array(Image.open(file)) for file in file_list])
+
+pred = np.zeros_like(datos_x[:,:,:,0].astype(np.uint8))
+
+for i, datos_x_ in enumerate(datos_x):
+    pred[i] = predecir(datos_x_, modelo)
+
+
+print(pred)
+
+# print(datos_x.shape)
+# y = predecir(datos_x, modelo)
+j=0
+for x in pred:
+    print(x)
+    img = Image.new('RGB', (x.shape[1], x.shape[0]), color='black')
+    for i in range(x.shape[0]):
+        for j in range(x.shape[1]):
+            if x[i, j] == 0:
+                img.putpixel((j, i), (255, 255, 0))  # yellow
+            elif x[i, j] == 1:
+                img.putpixel((j, i), (255, 255, 255))  # white
+            elif x[i, j] == 2:
+                img.putpixel((j, i), (0, 255, 0))  # green
+
+    # display the image
+    img.show()
+    # image = Image.fromarray()
+    # image.save(f'resultado{j}.png')
+    # j+=1
+
+
+# print(y.shape)
+# df = pd.DataFrame(y)
+# df.to_excel('output.xlsx', index=False)
+
+# j = 0
+# for x in y:
+#     # print(x)
+#     unique = np.unique(x)
+#     print(unique)
+#     image = Image.fromarray(x)
+#     image.save(f'resultado{j}.png')
+#     j+=1
+
+# print(y)
 
 
 
@@ -416,6 +548,62 @@ for class_list in num_images_per_class:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#datos_x  = np.array([np.dstack(np.array(rasterio.open(path).read())) for path in path_datos_x])
+#datos_x = datos_x[:,:,:,0:5]/65536.0
+
+
+
+
+
+
+def obtenerMatricesCovarianzas(datos_x, datos_y, medias,clases, prob_clases):
+    datos_shape = datos_x.shape
+    total_datos = np.multiply.reduce(datos_shape)
+    covarianzas = np.zeros(shape=(len(clases), datos_shape[3], datos_shape[3]))
+    # covarianzas = np.zeros(np.matrix(
+    #                 np.zeros(
+    #                     shape=(datos_shape[3], datos_shape[3])))
+    #                     for c in clases])
+    for i_img in range(datos_shape[0]):
+        for x in range(datos_shape[1]):
+            for y in range(datos_shape[2]):
+                k = datos_y[i_img, x, y]
+                m_temp = np.matrix(datos_x[i_img, x, y]-medias[k])
+                covarianzas[k]+=np.matmul(m_temp.T, m_temp)
+    for k, clase in enumerate(clases):
+        covarianzas[k]/=(prob_clases[k]*total_datos)
+    return covarianzas
 
 
 
