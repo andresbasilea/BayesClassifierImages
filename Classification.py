@@ -275,7 +275,7 @@ import os
 path = "OutputFruits/"
 
 # Define the number of classes
-num_classes = 3
+num_classes = 4
 
 # Create an array to store the count of pixels for each class
 class_counts = np.zeros(num_classes)
@@ -287,14 +287,16 @@ for filename in os.listdir(path):
         img = cv2.imread(os.path.join(path, filename))
 
         # Extract the mask of each color
-        red_mask = ((img[:, :, 2] == 255).astype(int))/2
-        blue_mask = ((img[:, :, 0] == 255).astype(int))/3
-        green_mask = ((img[:, :, 1] == 255).astype(int))/3
+        red_mask = ((img[:, :, 0] == 255).astype(int))/3
+        blue_mask = ((img[:, :, 2] == 255).astype(int))/3
+        green_mask = ((img[:, :, 1] == 255).astype(int))/2
+        black_mask = ((img[:,:,-1] == 0).astype(int))/1
 
         # Add the count of pixels for each class
         class_counts[0] += np.sum(red_mask)
         class_counts[1] += np.sum(blue_mask)
         class_counts[2] += np.sum(green_mask)
+        class_counts[3] += np.sum(black_mask)
 
 # Calculate the total number of pixels in all masks
 total_pixels = np.sum(class_counts)
@@ -305,6 +307,7 @@ class_probs = class_counts / total_pixels
 print("Prior probability of red class:", class_probs[0])
 print("Prior probability of blue class:", class_probs[1])
 print("Prior probability of green class:", class_probs[2])
+print("Prior probability of black class:", class_probs[3])
 
 
 
@@ -352,6 +355,59 @@ print("Prior probability of green class:", class_probs[2])
 
 
 
+# Obtencion del fondo
+
+
+file_pattern = "OutputFruits/All_Masks_*"
+
+# Get the file list
+file_list = glob.glob(file_pattern)
+
+x = 0
+for image in file_list:
+    image1 = cv2.imread(image)
+    image2 = cv2.imread(f"ImagenesEntrenamiento/Entrenamiento{x+1}.png")
+    x+=1
+    mask = cv2.inRange(image1, (0,0,0), (0,0,0))
+
+    new = np.zeros_like(image2)
+    new[mask!=0] = image2[mask!=0]
+    # Crop the object from img2 using the mask
+    # cropped_img = cv2.bitwise_and(image1, image2, mask=mask)
+
+    # Display the cropped image
+    # cv2.imshow("Cropped Image" cropped_img)
+    cv2.imwrite(f"OutputFruits/Class_4_Background_{x}.png", new)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # OBTENCION DE LA MATRIZ DE MEDIAS FUNCIONANDO 
 
@@ -366,6 +422,7 @@ file_list = glob.glob(file_pattern)
 c1 = []
 c2 = []
 c3 = []
+c4 = []
 for image in file_list:
     if "Class_1" in image:
         c1.append(image)
@@ -373,10 +430,12 @@ for image in file_list:
         c2.append(image)
     elif "Class_3" in image:
         c3.append(image)
+    elif "Class_4" in image:
+        c4.append(image)
 
-num_images_per_class = [c1, c2, c3]
+num_images_per_class = [c1, c2, c3, c4]
 #print(num_images_per_class)
-n_classes = 3
+n_classes = 4
 
 # Initialize the mean matrix for each class
 # mean_matrices = [np.zeros((1, 3), dtype=np.float32) for _ in range(n_classes)]
@@ -396,7 +455,8 @@ for class_list in num_images_per_class:
         image_array = np.array(image)
         # print(image_array)
         reshaped_array = image_array.reshape(-1,3)
-        df = pd.DataFrame(reshaped_array, columns=['B','G','R'])
+        reshaped_array = reshaped_array[:,[2,1,0]]
+        df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
         df_rgb_means.append(df)
 
     df_rgb_means = pd.concat(df_rgb_means)
@@ -412,6 +472,8 @@ for class_list in num_images_per_class:
 
     cov_matrix = np.cov(rgb_means, rowvar=False)
     mean_matrix = np.mean(rgb_means, axis=0)
+
+
 
     RGB_class_list_covs.append(cov_matrix)
     RGB_class_list_means.append(mean_matrix)
@@ -456,6 +518,7 @@ def disc_bayes(x, m, SI, detS, Pk):
 
 def predecir(datos_x, modelo):
     datos_shape = datos_x.shape
+    print("DATOS SHAPE: ", datos_shape)
     #datos_x.reshape(datos_shape[0]*datos_shape[1], datos_shape[2])
     prediccion_y = np.empty_like(datos_x[:,:,0]).astype(np.uint8)
     discr = np.empty(len(modelo['clases'])).astype(np.float64)
@@ -474,7 +537,7 @@ def predecir(datos_x, modelo):
     return prediccion_y
 
 
-clases = {0:'banana', 1:'huevo', 2:'chile'}
+clases = {0:'banana', 1:'huevo', 2:'chile', 3:'fondo'}
 
 modelo = {  
     'clases':clases,
@@ -494,8 +557,12 @@ file_list = glob.glob(file_pattern)
 print(file_list)
 
 datos_x = np.array([np.array(Image.open(file)) for file in file_list])
+# datos_x = datos_x[:,:,:,0:2]
+
+imgs = np.flip(datos_x[:,:,:,0:2], 3)
 
 pred = np.zeros_like(datos_x[:,:,:,0].astype(np.uint8))
+# print(pred)
 
 for i, datos_x_ in enumerate(datos_x):
     pred[i] = predecir(datos_x_, modelo)
@@ -505,10 +572,10 @@ print(pred)
 
 # print(datos_x.shape)
 # y = predecir(datos_x, modelo)
-j=0
+cont=0
 for x in pred:
     print(x)
-    img = Image.new('RGB', (x.shape[1], x.shape[0]), color='black')
+    img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
     for i in range(x.shape[0]):
         for j in range(x.shape[1]):
             if x[i, j] == 0:
@@ -517,11 +584,14 @@ for x in pred:
                 img.putpixel((j, i), (255, 255, 255))  # white
             elif x[i, j] == 2:
                 img.putpixel((j, i), (0, 255, 0))  # green
+            elif x[i, j] == 3:
+                img.putpixel((j, i), (255, 0, 0))  # red : background
 
     # display the image
     img.show()
     # image = Image.fromarray()
-    # image.save(f'resultado{j}.png')
+    cont += 1
+    img.save(f'resultado{cont}.png')
     # j+=1
 
 
