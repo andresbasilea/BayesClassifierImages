@@ -204,5 +204,3 @@ def Monkey_Mask(filename, image_num):
     cv2.destroyAllWindows()
     prueba15.prueba()       
     prueba16.prueba()
-
-# Mask_Colors("Entrenamiento2.png")

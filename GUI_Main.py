@@ -68,6 +68,7 @@ class ImageEditor(tk.Frame):
 
             i += 1
 
+        Classification.BayesRGB(2)
 
     def process_monkey_image(self):
         self.filenames = filedialog.askopenfilenames()
@@ -78,7 +79,9 @@ class ImageEditor(tk.Frame):
             Tools2.Monkey_Mask(filename.rstrip(".jpg")+".png", i)
 
             i += 1
-
+        Classification.BayesRGB(1)
+        # TODO: CHECAR BACKGROUND PARA QUE NO TOME SOLO UNO
+        #       CHECAR ERROR EN ENTRENAMIENTO DE MONKEYS
 
 
 

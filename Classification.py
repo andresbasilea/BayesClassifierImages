@@ -10,7 +10,7 @@ import numpy as np
 import pprint
 import pandas as pd
 import os
-
+import glob
 
 
 
@@ -18,818 +18,426 @@ def BayesRGB(monkey_fruit):
     
     if monkey_fruit == 1: # monkey images to classify
 
-        print("ho")
+        num_classes = 3
+        apriori = apriori_probability(1, num_classes)
+        mean_matrix, cov_matrix, det_covs, covs_inv = mean_cov_matrix(1, num_classes, apriori)
+
+        classes = {0: 'monkey', 1: 'halo', 2: 'fondo'}
+
+        modelo = {
+            'classes':classes,
+            'apriori': apriori,
+            'mean':mean_matrix,
+            'cov': cov_matrix,
+            'cov_det': det_covs,
+            'inverse_cov': covs_inv
+        }
+
+
+        file_pattern = "Monos/Prueba*.jpg"
+
+        file_list = glob.glob(file_pattern)
+        print(file_list)
+
+
+        for img in file_list:
+            img_ = cv2.imread(img)
+            new_shape = (600,600)
+            resized_img = cv2.resize(img_, new_shape)
+            cv2.imwrite(img, resized_img)
+
+
+        image_data = np.array([np.array(Image.open(file)) for file in file_list])
+
+        print(image_data[0].shape)
+
+
+
+        imgs = np.flip(image_data[:,:,:,0:2], 3)
+
+        prediction = np.zeros_like(image_data[:,:,:,0].astype(np.uint8))
+
+        for i, image_data_ in enumerate(image_data):
+            prediction[i] = predict(image_data_, modelo)
+
+        print(prediction)
+
+        # Create images based on prediction
+
+        cont=0
+        for x in prediction:
+            print(x)
+            img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
+            for i in range(x.shape[0]):
+                for j in range(x.shape[1]):
+                    if x[i, j] == 1:
+                        img.putpixel((j, i), (255, 255, 255))  # white for monkey
+                    elif x[i, j] == 0:
+                        img.putpixel((j, i), (180, 180, 180))  # grey for halo
+                    elif x[i, j] == 2:
+                        img.putpixel((j, i), (70, 70, 70))  # darker grey for background
+
+            img.show()
+            cont += 1
+            img.save(f'resultado_monkey{cont}.png')
+
+
+
+
+
+
+
+
 
 
     elif monkey_fruit == 2: # fruit images to classify
+        num_classes = 4
+        apriori = apriori_probability(2, num_classes)
+        mean_matrix, cov_matrix, det_covs, covs_inv = mean_cov_matrix(2, num_classes, apriori)
 
-        print('h')
+
+        classes = {0:'banana', 1:'huevo', 2:'chile', 3:'fondo'}
+
+        modelo = {  
+            'classes':classes,
+            'apriori': apriori,
+            'mean':mean_matrix,
+            'cov': cov_matrix,
+            'cov_det': det_covs,
+            'inverse_cov': covs_inv
+        }
+
+        file_pattern = "ImagenesPrueba/Prueba*.jpg"
+
+        file_list = glob.glob(file_pattern)
+        print(file_list)
+
+        image_data = np.array([np.array(Image.open(file)) for file in file_list])
+
+        imgs = np.flip(image_data[:,:,:,0:2], 3)
+
+        prediction = np.zeros_like(image_data[:,:,:,0].astype(np.uint8))
+
+        for i, image_data_ in enumerate(image_data):
+            prediction[i] = predict(image_data_, modelo)
+
+        print(prediction)
+
+        # Create images based on prediction
+
+        cont=0
+        for x in prediction:
+            print(x)
+            img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
+            for i in range(x.shape[0]):
+                for j in range(x.shape[1]):
+                    if x[i, j] == 0:
+                        img.putpixel((j, i), (255, 255, 0))  # yellow
+                    elif x[i, j] == 1:
+                        img.putpixel((j, i), (255, 255, 255))  # white
+                    elif x[i, j] == 2:
+                        img.putpixel((j, i), (0, 255, 0))  # green
+                    elif x[i, j] == 3:
+                        img.putpixel((j, i), (255, 0, 0))  # red : background
+
+            img.show()
+            cont += 1
+            img.save(f'resultado{cont}.png')
+
 
     else:
         print("Error")
 
 
 
-
-
-
-    num_images_file = num_classes * 2
-
-
-    dic = {}
-    for x in range(num_classes):
-        x = x+1
-        dic['Clase_%s_RGB' %x] = []
-        dic['Clase_%s_Mask' %x] = []
-
+def apriori_probability(monkey_fruit, num_classes):
+    # A priori probability
     
+    if monkey_fruit == 1:
+        path = "OutputMonkeys/"
+        num_classes = num_classes
 
+        # Create an array to store the count of pixels for each class
+        class_counts = np.zeros(num_classes)
 
-    i = 0
-    for imageRGB, imageMask in zip(images[0::2], images[1::2]):
-        pixelsRGB, pixelsMask = list(imageRGB.getdata()),list(imageMask.getdata())
-        #pixelsRGB, pixelsMask = imageRGB,imageMask
-        dic[f'Clase_{i%num_classes+1}_RGB'].append(pixelsRGB)
-        dic[f'Clase_{i%num_classes+1}_Mask'].append(pixelsMask)
-        i += 1
+        # Loop through each training image mask
+        for filename in os.listdir(path):
+            if "All_Masks_" in filename:
+                # Load the image
+                img = cv2.imread(os.path.join(path, filename))
 
-    
-    print(len([v for k,v in dic.items() if 'RGB' in k]))
+                # Extract the mask of each color
+                blue_mask = ((img[:, :, 2] == 255).astype(int))   # halo
+                green_mask = ((img[:, :, 1] == 255).astype(int))  # monkey
+                black_mask = ((img[:,:,-1] == 0).astype(int))     # backggound
+
+                class_counts[0] += np.sum(blue_mask)
+                class_counts[1] += np.sum(green_mask)
+                class_counts[2] += np.sum(black_mask)
+
+        total_pixels = np.sum(class_counts)
+        class_probs = class_counts / total_pixels
+
+        print("Prior probability of blue class (halo):", class_probs[0])
+        print("Prior probability of green class (monkey):", class_probs[1])
+        print("Prior probability of black class (background):", class_probs[2])
+
+        return class_probs
+
+
+
+
+    elif monkey_fruit == 2:
+        path = "OutputFruits/"
+        num_classes = num_classes
+
+        # Create an array to store the count of pixels for each class
+        class_counts = np.zeros(num_classes)
 
-    RGB_class_list = []
-    for x in range(num_classes):
-        RGB_class = [v for k,v in dic.items() if f'{x+1}_RGB' in k]
-        Mask_class = [v for k,v in dic.items() if f'{x+1}_Mask' in k]
-        df_rgb_means = []
-        for image in RGB_class:
-            image_array = np.array(image)
-            reshaped_array = image_array.reshape(-1,3)
-            df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
-            df_rgb_means.append(df)
+        # Loop through each training image mask
+        for filename in os.listdir(path):
+            if "All_Masks_" in filename:
+                # Load the image
+                img = cv2.imread(os.path.join(path, filename))
 
-        df_rgb_means = pd.concat(df_rgb_means)
-        df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
-        RGB_class_list.append([df_rgb_means.mean(),df_rgb_means.cov()])
+                # Extract the mask of each color
+                red_mask = ((img[:, :, 0] == 255).astype(int))/3    # eggs
+                blue_mask = ((img[:, :, 2] == 255).astype(int))/3   # chillies
+                green_mask = ((img[:, :, 1] == 255).astype(int))/2  # bananas
+                black_mask = ((img[:,:,-1] == 0).astype(int))/1     # background
 
-        print(f"\n\nClase {x+1} RGB DataFrame:\n ",df_rgb_means)
-        print(f"\nClass {x+1} mean matrix: \n", df_rgb_means.mean())
-        print(f"\nClass {x+1} cov matrix: \n", df_rgb_means.cov())
+                class_counts[0] += np.sum(red_mask)
+                class_counts[1] += np.sum(blue_mask)
+                class_counts[2] += np.sum(green_mask)
+                class_counts[3] += np.sum(black_mask)
 
+        total_pixels = np.sum(class_counts)
+        class_probs = class_counts / total_pixels
 
+        print("Prior probability of red class (eggs):", class_probs[0])
+        print("Prior probability of blue class (chillies):", class_probs[1])
+        print("Prior probability of green class (bananas):", class_probs[2])
+        print("Prior probability of black class (background):", class_probs[3])
 
+        return class_probs
 
 
-    # RGB_images = [v for k, v in dic.items() if 'RGB' in k]
-    # Mask_images = [v for k, v in dic.items() if 'Mask' in k]
+def mean_cov_matrix(monkey_fruit, num_classes, apriori):
 
+    if monkey_fruit == 1:
+        file_pattern = "OutputMonkeys/All_Masks_*_plus_halo.png*"
+        file_list = glob.glob(file_pattern)
 
-    # df_rgb_means = []
-    # for image in RGB_images:
-    #     image_array = np.array(image)
-    #     reshaped_array = image_array.reshape(-1,3)
-    #     df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
-    #     df_rgb_means.append(df)
+        x = 0
+        for image in file_list:
+            image1 = cv2.imread(image)
+            image2 = cv2.imread(f"Monos/Entrenamiento{x+1}.png")
+            x+=1
+            mask = cv2.inRange(image1, (0,0,0), (0,0,0))
 
-    # df_rgb_means = pd.concat(df_rgb_means)
-    # print(df_rgb_means)
+            new = np.zeros_like(image2)
+            new[mask!=0] = image2[mask!=0]
+            cv2.imwrite(f"OutputMonkeys/Class_3_Background_{x}.png", new)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
 
-    # df1 = pd.DataFrame([p for p in RGB_images[0] if sum(p) != 0], columns=['R','G','B', 'A'])
+        # Obtaining the mean matrix for each class
 
+        file_pattern = "OutputMonkeys/Class_*_*"
+        file_list = glob.glob(file_pattern)
 
-    # df_RGB = []
-    # for image in RGB_images:
-    #   df_RGB1 = pd.DataFrame([p for p in image if sum(p) != 0], columns=['R','G','B', 'A'])
-    #   df_RGB = pd.concat([df_RGB, df_RGB_1])
-        
-    # print(df1)
+        c1 = []
+        c2 = []
+        c3 = []
+        for image in file_list:
+            if "Class_1" in image:
+                c1.append(image)
+            elif "Class_2" in image:
+                c2.append(image)
+            elif "Class_3" in image:
+                c3.append(image)
 
+        num_images_per_class = [c1, c2, c3]
+        n_classes = num_classes
 
+        RGB_class_list_covs = []
+        RGB_class_list_means = []
+        x=0
+        for class_list in num_images_per_class:
+            print(class_list)
+            df_rgb_means = []
+            for image in class_list:
+                image = image.replace("\\", "/")
+                image = cv2.imread(image)
+                image_array = np.array(image)
+                reshaped_array = image_array.reshape(-1,3)
+                reshaped_array = reshaped_array[:,[2,1,0]]
+                df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
+                df_rgb_means.append(df)
 
-    # df1 = pd.DataFrame([p for p in pixeles if sum(p) != 0], columns=['R', 'G', 'B', 'A'])
-    # df2 = pd.DataFrame([p for p in pixeles2 if sum(p) != 0], columns=['R', 'G', 'B', 'A'])
-    # dfRGB = pd.concat([df1, df2], axis=0)
-    # dfRGB = dfRGB.drop(dfRGB.columns[-1], axis=1)
+            df_rgb_means = pd.concat(df_rgb_means)
+            df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
+            
+            x+=1
 
-    # df_filtered = dfRGB[(dfRGB['R'] == 255) & (dfRGB['G'] == 255) & (dfRGB['B'] == 255)]
-    # print(len(df_filtered))
+            print(f"\n\nClase {x} RGB DataFrame:\n ",df_rgb_means)
+            print(f"\nClass {x} mean matrix: \n", df_rgb_means.mean())
+            print(f"\nClass {x} cov matrix: \n", df_rgb_means.cov())
 
-    # i = 0
-    # j = 1
-    # for image in images:
-    #   # pixels = list(image.getdata())
+            rgb_means = df_rgb_means.to_numpy()
 
-    #   pixels = i
-    #   print(j)
-    #   if i%2 == 0: # RGB image
-    #       if j%num_classes == 0:
-    #           j = 1
-    #       dic[f'Clase_{j%num_classes}_RGB'].append(pixels)
-    #   else:  # Mask image
-    #       if j%num_classes == 0:
-    #           j = 1
-    #       dic[f'Clase_{j%num_classes}_Mask'].append(pixels)
+            cov_matrix = np.cov(rgb_means, rowvar=False)
+            mean_matrix = np.mean(rgb_means, axis=0)
 
-    #   if i%2 == 0:
-    #       j += 1
-    #   i += 1
-        
 
-    
-    
 
-# img=mpimg.imread(repositorioPractica2 + '/Entrenamiento1.jpg') 
-# imgplot = plt.imshow(img)
+            RGB_class_list_covs.append(cov_matrix)
+            RGB_class_list_means.append(mean_matrix)
 
-# imgP1=mpimg.imread(repositorioPractica2 + '/Platano1.PNG') 
-# imgplotP1 = plt.imshow(imgP1)
 
-# imgP2=mpimg.imread(repositorioPractica2 + '/Platano2.PNG') 
-# imgplotP2 = plt.imshow(imgP2)
+        print("Covs: \n\n", RGB_class_list_covs)
+        print("\n\nMeans: \n\n", RGB_class_list_means)
 
-# print("Tamaño de la Imagen 1:\n",imgP1.shape)
 
-# print("Tamaño de la Imagen 2:\n", imgP2.shape)
+        # Covariance Matrix
 
-# print("Estos valores representan altura, ancho y número de canales de color")
+        det_covs = np.array([np.linalg.det(RGB_class_list_covs[k]) for k in range(n_classes)])
 
-# print("Altura de los plátanos de la imagen Entrenamiento1:",imgP1.shape[0],imgP2.shape[0])
-# print("Ancho de los plátanos de la imagen Entrenamiento1:",imgP1.shape[1],imgP2.shape[1])
+        covs_inv = np.zeros_like(RGB_class_list_covs)
+        for k in range(n_classes):
+            covs_inv[k] = np.linalg.inv(np.matrix(RGB_class_list_covs[k]))
 
 
-# dfsize = pd.DataFrame(columns=["Altura","Ancho"])
-# dfsize.loc[len(dfsize)] = [imgP1.shape[0],imgP1.shape[1]]
-# dfsize.loc[len(dfsize)] = [imgP2.shape[0],imgP2.shape[1]]
-# print("Data Frame de los anchos y alturas de los plátanos en imagen Entrenamiento1:\n\n",dfsize)
+        print("\n\ndet-covs", det_covs,"\n\n\n")
+        print("inverse-cov", covs_inv, "\n\n\n")
 
+        return RGB_class_list_means, RGB_class_list_covs, det_covs, covs_inv      
 
-# # Esta es una prueba de que los pixeles blancos tiene valor 0,0,0,0
-# # Carga la imagen
-# imagen = Image.open(repositorioPractica2 + '/Platano1.PNG')
 
-# # Obtiene el valor del pixel superior izquierdo
-# valor_pixel = imagen.getpixel((10, 10))
 
-# # Imprime el resultado
-# print(valor_pixel)
 
-# # Abre la imagen 1
-# imagen = Image.open(repositorioPractica2 + '/Platano1.PNG')
+    if monkey_fruit == 2:
 
-# # Obtiene una lista de tuplas de píxeles (R, G, B)
-# pixeles = list(imagen.getdata())
+        # Obtaining the images of only the background, to get the mean of background class. 
 
-# # Abre la imagen 2
-# imagen2 = Image.open(repositorioPractica2 + '/Platano2.PNG')
+        file_pattern = "OutputFruits/All_Masks_*"
+        file_list = glob.glob(file_pattern)
 
-# # Obtiene una lista de tuplas de píxeles (R, G, B)
-# pixeles2 = list(imagen2.getdata())
+        x = 0
+        for image in file_list:
+            image1 = cv2.imread(image)
+            image2 = cv2.imread(f"ImagenesEntrenamiento/Entrenamiento{x+1}.png")
+            x+=1
+            mask = cv2.inRange(image1, (0,0,0), (0,0,0))
 
-# # Convierte la lista de tuplas en un DataFrame de pandas
-# df1 = pd.DataFrame([p for p in pixeles if sum(p) != 0], columns=['R', 'G', 'B', 'A'])
-# df2 = pd.DataFrame([p for p in pixeles2 if sum(p) != 0], columns=['R', 'G', 'B', 'A'])
-# dfRGB = pd.concat([df1, df2], axis=0)
-# dfRGB = dfRGB.drop(dfRGB.columns[-1], axis=1)
+            new = np.zeros_like(image2)
+            new[mask!=0] = image2[mask!=0]
+            cv2.imwrite(f"OutputFruits/Class_4_Background_{x}.png", new)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
-# df_filtered = dfRGB[(dfRGB['R'] == 255) & (dfRGB['G'] == 255) & (dfRGB['B'] == 255)]
-# print(len(df_filtered))
 
-# # La media
-# media = dfRGB.mean()
-# print("\nValor de las Medias:","\n", media)
+        # Obtaining the mean matrix for each class
 
+        file_pattern = "OutputFruits/Class_*_*"
+        file_list = glob.glob(file_pattern)
 
-# #Covarianza
-# covariance = dfRGB.cov()
-# print("\nMatriz de Covarianza:\n", covariance)
+        c1 = []
+        c2 = []
+        c3 = []
+        c4 = []
+        for image in file_list:
+            if "Class_1" in image:
+                c1.append(image)
+            elif "Class_2" in image:
+                c2.append(image)
+            elif "Class_3" in image:
+                c3.append(image)
+            elif "Class_4" in image:
+                c4.append(image)
 
-# # La media
-# media = dfsize.mean()
-# print("\nValor de las Medias:","\n", media)
+        num_images_per_class = [c1, c2, c3, c4]
+        n_classes = num_classes
 
+        RGB_class_list_covs = []
+        RGB_class_list_means = []
+        x=0
+        for class_list in num_images_per_class:
+            print(class_list)
+            df_rgb_means = []
+            for image in class_list:
+                image = image.replace("\\", "/")
+                image = cv2.imread(image)
+                image_array = np.array(image)
+                reshaped_array = image_array.reshape(-1,3)
+                reshaped_array = reshaped_array[:,[2,1,0]]
+                df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
+                df_rgb_means.append(df)
 
-# #Covarianza
-# covariance = dfsize.cov()
-# print("\nMatriz de Covarianza:\n", covariance)
+            df_rgb_means = pd.concat(df_rgb_means)
+            df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
+            
+            x+=1
 
+            print(f"\n\nClase {x} RGB DataFrame:\n ",df_rgb_means)
+            print(f"\nClass {x} mean matrix: \n", df_rgb_means.mean())
+            print(f"\nClass {x} cov matrix: \n", df_rgb_means.cov())
 
+            rgb_means = df_rgb_means.to_numpy()
 
+            cov_matrix = np.cov(rgb_means, rowvar=False)
+            mean_matrix = np.mean(rgb_means, axis=0)
 
 
-import glob
-import numpy as np
-import pandas as pd
 
-# def obtenerProbAPriori(datos_y, n_clases : int):
-#     data_shape = datos_y.shape
-#     print(data_shape)
-#     total_datos = np.multiply.reduce(data_shape)
-#     print("total_datos: " , total_datos)
-#     hist = np.histogram(datos_y.reshape(1, total_datos), 
-#                     bins=n_clases, 
-#                     range=[0,n_clases-1])
-#     prob = hist[0].astype(np.long) / total_datos
-#     print(prob)
+            RGB_class_list_covs.append(cov_matrix)
+            RGB_class_list_means.append(mean_matrix)
 
-#     plt.bar(range(n_clases), hist[0], align='center')
-#     plt.xticks(range(n_clases))
-#     plt.xlabel('Class')
-#     plt.ylabel('Count')
-#     plt.title('Histogram of class frequencies')
-#     plt.show()
 
+        print("Covs: \n\n", RGB_class_list_covs)
+        print("\n\nMeans: \n\n", RGB_class_list_means)
 
-#     return prob
 
+        # Covariance Matrix
 
-# filelist = glob.glob("OutputFruits/All_Masks_*.png")
-# x = np.array([np.array(Image.open(fname)) for fname in filelist])
-# nz = np.nonzero(x)
-# rows = np.unique(nz[0])
-# print(rows)
-# print(len(rows), "x: ",len(x))
-# # x_flat = x.reshape(8,-1)
-# # df = pd.DataFrame(x_flat)
-# # df.to_excel("data.xlsx", index=False)
+        det_covs = np.array([np.linalg.det(RGB_class_list_covs[k]) for k in range(n_classes)])
 
-# image =  Image.open("OutputFruits/All_Masks_1.png")
+        covs_inv = np.zeros_like(RGB_class_list_covs)
+        for k in range(n_classes):
+            covs_inv[k] = np.linalg.inv(np.matrix(RGB_class_list_covs[k]))
 
 
+        print("\n\ndet-covs", det_covs,"\n\n\n")
+        print("inverse-cov", covs_inv, "\n\n\n")
 
-# data_img = np.array(image)
+        return RGB_class_list_means, RGB_class_list_covs, det_covs, covs_inv
 
-# prob = obtenerProbAPriori(x, 4)
-# print(prob)
 
 
+def bayes_disc(vector, mean, inverse_cov, cov_det, class_P):
+    step = np.matrix(vector-mean)
+    inverse_cov = np.matrix(inverse_cov)
+    step2 = np.matmul(step, inverse_cov)
+    step3 = (step2.dot(step.T))[0,0].item()
+    bayes_disc = -(1.0/2.0)*step3-(1.0/2.0)*np.log(cov_det)+np.log(class_P)
+    return bayes_disc.item()
 
+def predict(image_data, model):
+    image_data_shape = image_data.shape
+    prediction = np.empty_like(image_data[:,:,0]).astype(np.uint8)
+    discr = np.empty(len(model['classes'])).astype(np.float64)
+    for i in range(image_data_shape[0]):
+        for j in range(image_data_shape[1]):
+            for k in model['classes']:
+                vector=image_data[i,j]
+                mean=model['mean'][k]
+                cov=model['cov'][k]
+                inverse_cov=model['inverse_cov'][k]
+                cov_det=model['cov_det'][k]
+                class_P=model['apriori'][k]
+                discr[k] = bayes_disc(vector, mean, inverse_cov, cov_det, class_P)
+            prediction[i,j] = discr.argmax()
+    return prediction
 
 
-# PROBABILIDAD A PRIORI FUNCIONANDO
-
-import numpy as np
-import cv2
-import os
-
-# Define the path to your training images
-path = "OutputFruits/"
-
-# Define the number of classes
-num_classes = 4
-
-# Create an array to store the count of pixels for each class
-class_counts = np.zeros(num_classes)
-
-# Loop through each training image
-for filename in os.listdir(path):
-    if "All_Masks_" in filename:
-        # Load the image
-        img = cv2.imread(os.path.join(path, filename))
-
-        # Extract the mask of each color
-        red_mask = ((img[:, :, 0] == 255).astype(int))/3
-        blue_mask = ((img[:, :, 2] == 255).astype(int))/3
-        green_mask = ((img[:, :, 1] == 255).astype(int))/2
-        black_mask = ((img[:,:,-1] == 0).astype(int))/1
-
-        # Add the count of pixels for each class
-        class_counts[0] += np.sum(red_mask)
-        class_counts[1] += np.sum(blue_mask)
-        class_counts[2] += np.sum(green_mask)
-        class_counts[3] += np.sum(black_mask)
-
-# Calculate the total number of pixels in all masks
-total_pixels = np.sum(class_counts)
-
-# Calculate the prior probability of each class
-class_probs = class_counts / total_pixels
-
-print("Prior probability of red class:", class_probs[0])
-print("Prior probability of blue class:", class_probs[1])
-print("Prior probability of green class:", class_probs[2])
-print("Prior probability of black class:", class_probs[3])
-
-
-
-
-# import glob
-# import cv2
-# import numpy as np
-
-# # Define the file pattern to match
-# file_pattern = "OutputFruits/Class_*_*"
-
-# # Get the file list
-# file_list = glob.glob(file_pattern)
-
-# # Define the number of classes
-# n_classes = 3
-
-# # Initialize the mean matrix for each class
-# mean_matrices = [np.zeros((3, 3), dtype=np.float32) for _ in range(n_classes)]
-
-# # Loop over each file and calculate the mean matrix for each class
-# for file_path in file_list:
-#     # Extract the class number from the file name
-#     class_num = int(file_path.split("_")[1]) - 1
-    
-#     # Read the image
-#     img = cv2.imread(file_path)
-    
-#     # Calculate the mean matrix for the image
-#     mean_matrix = np.mean(img, axis=(0, 1))
-    
-#     # Add the mean matrix to the corresponding class
-#     mean_matrices[class_num] += mean_matrix
-
-# # Divide each mean matrix by the number of images in the corresponding class to get the final mean matrix for each class
-# for i in range(n_classes):
-#     mean_matrices[i] /= len(file_list)
-
-# # Print the final mean matrices for each class
-# for i in range(n_classes):
-#     print(f"Mean matrix for Class {i+1}:")
-#     print(mean_matrices[i])
-
-
-
-
-
-# Obtencion del fondo
-
-
-file_pattern = "OutputFruits/All_Masks_*"
-
-# Get the file list
-file_list = glob.glob(file_pattern)
-
-x = 0
-for image in file_list:
-    image1 = cv2.imread(image)
-    image2 = cv2.imread(f"ImagenesEntrenamiento/Entrenamiento{x+1}.png")
-    x+=1
-    mask = cv2.inRange(image1, (0,0,0), (0,0,0))
-
-    new = np.zeros_like(image2)
-    new[mask!=0] = image2[mask!=0]
-    # Crop the object from img2 using the mask
-    # cropped_img = cv2.bitwise_and(image1, image2, mask=mask)
-
-    # Display the cropped image
-    # cv2.imshow("Cropped Image" cropped_img)
-    cv2.imwrite(f"OutputFruits/Class_4_Background_{x}.png", new)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# OBTENCION DE LA MATRIZ DE MEDIAS FUNCIONANDO 
-
-
-file_pattern = "OutputFruits/Class_*_*"
-
-# Get the file list
-file_list = glob.glob(file_pattern)
-
-# print(file_list)
-
-c1 = []
-c2 = []
-c3 = []
-c4 = []
-for image in file_list:
-    if "Class_1" in image:
-        c1.append(image)
-    elif "Class_2" in image:
-        c2.append(image)
-    elif "Class_3" in image:
-        c3.append(image)
-    elif "Class_4" in image:
-        c4.append(image)
-
-num_images_per_class = [c1, c2, c3, c4]
-#print(num_images_per_class)
-n_classes = 4
-
-# Initialize the mean matrix for each class
-# mean_matrices = [np.zeros((1, 3), dtype=np.float32) for _ in range(n_classes)]
-
-
-RGB_class_list_covs = []
-RGB_class_list_means = []
-x=0
-for class_list in num_images_per_class:
-    print(class_list)
-    df_rgb_means = []
-    for image in class_list:
-        #print(image)
-        image = image.replace("\\", "/")
-        # print(image)
-        image = cv2.imread(image)
-        image_array = np.array(image)
-        # print(image_array)
-        reshaped_array = image_array.reshape(-1,3)
-        reshaped_array = reshaped_array[:,[2,1,0]]
-        df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
-        df_rgb_means.append(df)
-
-    df_rgb_means = pd.concat(df_rgb_means)
-    df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
-    
-    x+=1
-
-    print(f"\n\nClase {x} RGB DataFrame:\n ",df_rgb_means)
-    print(f"\nClass {x} mean matrix: \n", df_rgb_means.mean())
-    print(f"\nClass {x} cov matrix: \n", df_rgb_means.cov())
-
-    rgb_means = df_rgb_means.to_numpy()
-
-    cov_matrix = np.cov(rgb_means, rowvar=False)
-    mean_matrix = np.mean(rgb_means, axis=0)
-
-
-
-    RGB_class_list_covs.append(cov_matrix)
-    RGB_class_list_means.append(mean_matrix)
-
-
-print("Covs: \n\n", RGB_class_list_covs)
-print("\n\nMeans: \n\n", RGB_class_list_means)
-
-
-# Matriz de covarianzas
-
-
-
-det_covs = np.array([np.linalg.det(RGB_class_list_covs[k]) for k in range(n_classes)])
-
-#%%
-covs_inv = np.zeros_like(RGB_class_list_covs)
-for k in range(n_classes):
-    covs_inv[k] = np.linalg.inv(np.matrix(RGB_class_list_covs[k]))
-
-
-print("\n\ndet-covs", det_covs,"\n\n\n")
-print("inverse-cov", covs_inv, "\n\n\n")
-
-
-
-
-def disc_bayes(x, m, SI, detS, Pk):
-    temp = np.matrix(x-m)
-    # print(temp.shape)
-    SI = np.matrix(SI)
-    # print(SI.shape)
-    temp2 = np.matmul(temp, SI)
-    # print(temp2.shape)
-    # temp3 = np.matmul(temp2, temp.T).item()
-    temp3 = (temp2.dot(temp.T))[0,0].item()
-    # print(temp3.shape)
-    #print(temp3)
-    disc = -(1.0/2.0)*temp3-(1.0/2.0)*np.log(detS)+np.log(Pk)
-    #print(disc)
-    return disc.item()
-
-def predecir(datos_x, modelo):
-    datos_shape = datos_x.shape
-    print("DATOS SHAPE: ", datos_shape)
-    #datos_x.reshape(datos_shape[0]*datos_shape[1], datos_shape[2])
-    prediccion_y = np.empty_like(datos_x[:,:,0]).astype(np.uint8)
-    discr = np.empty(len(modelo['clases'])).astype(np.float64)
-    for i in range(datos_shape[0]):
-        for j in range(datos_shape[1]):
-            for k in modelo['clases']:
-                x=datos_x[i,j]
-                m=modelo['medias'][k]
-                S=modelo['covarianza'][k]
-                SI=modelo['inverse-cov'][k]
-                detS=modelo['det_covs'][k]
-                pk=modelo['apriori'][k]
-                discr[k] = disc_bayes(x, m, SI, detS, pk)
-            prediccion_y[i,j] = discr.argmax()
-            #print(prediccion_y[i,j])
-    return prediccion_y
-
-
-clases = {0:'banana', 1:'huevo', 2:'chile', 3:'fondo'}
-
-modelo = {  
-    'clases':clases,
-    'apriori': class_probs,
-    'medias':RGB_class_list_means,
-    'covarianza': RGB_class_list_covs,
-    'det_covs': det_covs,
-    'inverse-cov': covs_inv
-}
-
-
-file_pattern = "ImagenesPrueba/Prueba*.jpg"
-
-# Get the file list
-file_list = glob.glob(file_pattern)
-# file_list = file_list.replace("\\", "/")
-print(file_list)
-
-datos_x = np.array([np.array(Image.open(file)) for file in file_list])
-# datos_x = datos_x[:,:,:,0:2]
-
-imgs = np.flip(datos_x[:,:,:,0:2], 3)
-
-pred = np.zeros_like(datos_x[:,:,:,0].astype(np.uint8))
-# print(pred)
-
-for i, datos_x_ in enumerate(datos_x):
-    pred[i] = predecir(datos_x_, modelo)
-
-
-print(pred)
-
-# print(datos_x.shape)
-# y = predecir(datos_x, modelo)
-cont=0
-for x in pred:
-    print(x)
-    img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
-    for i in range(x.shape[0]):
-        for j in range(x.shape[1]):
-            if x[i, j] == 0:
-                img.putpixel((j, i), (255, 255, 0))  # yellow
-            elif x[i, j] == 1:
-                img.putpixel((j, i), (255, 255, 255))  # white
-            elif x[i, j] == 2:
-                img.putpixel((j, i), (0, 255, 0))  # green
-            elif x[i, j] == 3:
-                img.putpixel((j, i), (255, 0, 0))  # red : background
-
-    # display the image
-    img.show()
-    # image = Image.fromarray()
-    cont += 1
-    img.save(f'resultado{cont}.png')
-    # j+=1
-
-
-# print(y.shape)
-# df = pd.DataFrame(y)
-# df.to_excel('output.xlsx', index=False)
-
-# j = 0
-# for x in y:
-#     # print(x)
-#     unique = np.unique(x)
-#     print(unique)
-#     image = Image.fromarray(x)
-#     image.save(f'resultado{j}.png')
-#     j+=1
-
-# print(y)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#datos_x  = np.array([np.dstack(np.array(rasterio.open(path).read())) for path in path_datos_x])
-#datos_x = datos_x[:,:,:,0:5]/65536.0
-
-
-
-
-
-
-def obtenerMatricesCovarianzas(datos_x, datos_y, medias,clases, prob_clases):
-    datos_shape = datos_x.shape
-    total_datos = np.multiply.reduce(datos_shape)
-    covarianzas = np.zeros(shape=(len(clases), datos_shape[3], datos_shape[3]))
-    # covarianzas = np.zeros(np.matrix(
-    #                 np.zeros(
-    #                     shape=(datos_shape[3], datos_shape[3])))
-    #                     for c in clases])
-    for i_img in range(datos_shape[0]):
-        for x in range(datos_shape[1]):
-            for y in range(datos_shape[2]):
-                k = datos_y[i_img, x, y]
-                m_temp = np.matrix(datos_x[i_img, x, y]-medias[k])
-                covarianzas[k]+=np.matmul(m_temp.T, m_temp)
-    for k, clase in enumerate(clases):
-        covarianzas[k]/=(prob_clases[k]*total_datos)
-    return covarianzas
-
-
-
-
-
-
-
-#     class_num = int(file_path.split('_')[1])-1
-
-#     img = cv2.imread(file_path)
-
-#     non_black = img.any(axis=-1)
-#     mean_matrix = np.mean(img[non_black], axis=(0))
-
-#     if np.sum(mean_matrix)>0:
-#         mean_matrices[class_num] += mean_matrix
-
-
-# for i in range(n_classes):
-#     mean_matrices[i] /= num_images_per_class[i]
-
-
-# for i in range(n_classes):
-#     print(f'Mean matrix for class {i+1}:')
-#     print(mean_matrices[i])
- 
-
-
-# for imageRGB, imageMask in zip(images[0::2], images[1::2]):
-#     pixelsRGB, pixelsMask = list(imageRGB.getdata()),list(imageMask.getdata())
-#     #pixelsRGB, pixelsMask = imageRGB,imageMask
-#     dic[f'Clase_{i%num_classes+1}_RGB'].append(pixelsRGB)
-#     dic[f'Clase_{i%num_classes+1}_Mask'].append(pixelsMask)
-#     i += 1
-
-
-# print(len([v for k,v in dic.items() if 'RGB' in k]))
-
-# RGB_class_list = []
-# for x in range(num_classes):
-#     RGB_class = [v for k,v in dic.items() if f'{x+1}_RGB' in k]
-#     Mask_class = [v for k,v in dic.items() if f'{x+1}_Mask' in k]
-#     df_rgb_means = []
-#     for image in RGB_class:
-#         image_array = np.array(image)
-#         reshaped_array = image_array.reshape(-1,3)
-#         df = pd.DataFrame(reshaped_array, columns=['R','G','B'])
-#         df_rgb_means.append(df)
-
-#     df_rgb_means = pd.concat(df_rgb_means)
-#     df_rgb_means = df_rgb_means.loc[~(df_rgb_means==0).all(axis=1)]   # Delete rows with '0' in R, G and B
-#     RGB_class_list.append([df_rgb_means.mean(),df_rgb_means.cov()])
-
-#     print(f"\n\nClase {x+1} RGB DataFrame:\n ",df_rgb_means)
-#     print(f"\nClass {x+1} mean matrix: \n", df_rgb_means.mean())
-#     print(f"\nClass {x+1} cov matrix: \n", df_rgb_means.cov())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# import numpy as np
-# import glob
-# from PIL import Image
-
-# # Define the classes you want to classify
-# classes = ["Fruit1", "Fruit2"]
-
-# # Load the dataset of images composed of masks for each class
-# data = []
-# for class_name in classes:
-#     file_list = glob.glob(f"OutputFruits/All_Masks_*.png")
-#     for file_path in file_list:
-#         img = Image.open(file_path)
-#         data.append((class_name, img))
-
-# # Preprocess the dataset by converting each image to a feature vector
-# X = []
-# y = []
-# for class_name, img in data:
-#     pixels = np.array(img)
-#     mask = (pixels[:, :, 1] == 255)
-#     freqs = np.bincount(mask.ravel(), minlength=2)
-#     feature_vec = freqs / np.sum(freqs)
-#     X.append(feature_vec)
-#     y.append(class_name)
-# X = np.array(X)
-# y = np.array(y)
-
-# # Split the preprocessed dataset into training and testing sets
-# n_train = int(0.8 * len(X))
-# X_train, y_train = X[:n_train], y[:n_train]
-# X_test, y_test = X[n_train:], y[n_train:]
-
-# # Estimate the prior probability of each class
-# prior = {}
-# for class_name in classes:
-#     prior[class_name] = np.mean(y_train == class_name)
-
-# # Estimate the conditional probability of each pixel value given each class
-# cond_prob = {}
-# for class_name in classes:
-#     mask = (y_train == class_name)
-#     freqs = np.mean(X_train[mask], axis=0)
-#     cond_prob[class_name] = (freqs + 1) / (np.sum(mask) + 2)  # Laplace smoothing
-
-# # Classify each image in the testing set using Bayesian Naive inference
-# y_pred = []
-# for i in range(len(X_test)):
-#     probs = {}
-#     for class_name in classes:
-#         p = prior[class_name]
-#         for j in range(len(X_test[i])):
-#             if X_test[i][j] == 0:
-#                 p *= 1 - cond_prob[class_name][j]
-#             else:
-#                 p *= cond_prob[class_name][j]
-#         probs[class_name] = p
-#     y_pred.append(max(probs, key=probs.get))
-
-# # Evaluate the performance of the classifier
-# print(y_pred)
-# accuracy = np.mean(y_pred == y_test)
-# print(f"Accuracy: {accuracy}")
