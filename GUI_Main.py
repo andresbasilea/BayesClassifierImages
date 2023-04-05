@@ -80,9 +80,6 @@ class ImageEditor(tk.Frame):
 
             i += 1
         Classification.BayesRGB(1)
-        # TODO: CHECAR BACKGROUND PARA QUE NO TOME SOLO UNO
-        #       CHECAR ERROR EN ENTRENAMIENTO DE MONKEYS
-
 
 
 root = tk.Tk()

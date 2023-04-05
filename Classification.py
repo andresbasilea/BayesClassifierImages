@@ -225,7 +225,7 @@ def apriori_probability(monkey_fruit, num_classes):
 def mean_cov_matrix(monkey_fruit, num_classes, apriori):
 
     if monkey_fruit == 1:
-        file_pattern = "OutputMonkeys/All_Masks_*_plus_halo.png*"
+        file_pattern = "OutputMonkeys/All_halo_Masks_*.png*"
         file_list = glob.glob(file_pattern)
 
         x = 0
