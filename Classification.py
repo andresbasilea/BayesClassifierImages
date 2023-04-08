@@ -27,7 +27,7 @@ def BayesRGB(monkey_fruit):
             apriori = apriori_probability(1, num_classes)
             mean_matrix, cov_matrix, det_covs, covs_inv = mean_cov_matrix(1, num_classes, apriori)
 
-            classes = {0: 'monkey', 1: 'halo', 2: 'fondo'}
+            classes = {0: 'halo', 1: 'monkey', 2: 'fondo'}
             now = datetime.datetime.now()
 
             output_file.write("\n\n##############################################################\n\nBayesian classifier for monkey images. \nRan on ")
@@ -112,10 +112,10 @@ def BayesRGB(monkey_fruit):
                 img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
                 for i in range(x.shape[0]):
                     for j in range(x.shape[1]):
-                        if x[i, j] == 1:
-                            img.putpixel((j, i), (255, 255, 255))  # white for monkey
-                        elif x[i, j] == 0:
+                        if x[i, j] == 0:
                             img.putpixel((j, i), (180, 180, 180))  # grey for halo
+                        elif x[i, j] == 1:
+                            img.putpixel((j, i), (255, 255, 255))  # white for monkey
                         elif x[i, j] == 2:
                             img.putpixel((j, i), (70, 70, 70))  # darker grey for background
 
@@ -239,7 +239,7 @@ def apriori_probability(monkey_fruit, num_classes):
 
         # Loop through each training image mask
         for filename in os.listdir(path):
-            if "All_Masks_" in filename:
+            if "All_halo_Masks_" in filename:
                 # Load the image
                 img = cv2.imread(os.path.join(path, filename))
 
@@ -251,6 +251,7 @@ def apriori_probability(monkey_fruit, num_classes):
                 class_counts[0] += np.sum(blue_mask)
                 class_counts[1] += np.sum(green_mask)
                 class_counts[2] += np.sum(black_mask)
+                print("class counts, ", class_counts[0], class_counts[1])
 
         total_pixels = np.sum(class_counts)
         class_probs = class_counts / total_pixels
@@ -336,6 +337,7 @@ def mean_cov_matrix(monkey_fruit, num_classes, apriori):
                 c3.append(image)
 
         num_images_per_class = [c1, c2, c3]
+        print("NUM IMAGES PER CLAS: ",num_images_per_class)
         n_classes = num_classes
 
         RGB_class_list_covs = []
