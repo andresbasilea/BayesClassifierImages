@@ -11,75 +11,117 @@ import pprint
 import pandas as pd
 import os
 import glob
-
+import time
+import datetime
 
 
 def BayesRGB(monkey_fruit):
     
     if monkey_fruit == 1: # monkey images to classify
 
-        num_classes = 3
-        apriori = apriori_probability(1, num_classes)
-        mean_matrix, cov_matrix, det_covs, covs_inv = mean_cov_matrix(1, num_classes, apriori)
+        with open("BayesianClassifierResults.txt", "a") as output_file:
 
-        classes = {0: 'monkey', 1: 'halo', 2: 'fondo'}
+            start_time = time.time()
 
-        modelo = {
-            'classes':classes,
-            'apriori': apriori,
-            'mean':mean_matrix,
-            'cov': cov_matrix,
-            'cov_det': det_covs,
-            'inverse_cov': covs_inv
-        }
+            num_classes = 3
+            apriori = apriori_probability(1, num_classes)
+            mean_matrix, cov_matrix, det_covs, covs_inv = mean_cov_matrix(1, num_classes, apriori)
+
+            classes = {0: 'monkey', 1: 'halo', 2: 'fondo'}
+            now = datetime.datetime.now()
+
+            output_file.write("\n\n##############################################################\n\nBayesian classifier for monkey images. \nRan on ")
+            output_file.write(now.strftime("%Y-%m-%d %H:%M:%S"))
+            output_file.write("\nTrain time: ")
+            output_file.write(str(time.time() - start_time))
+            output_file.write("\n")
+
+            output_file.write("\n\nTraining: ")
+            output_file.write("\n\nPrior probabilities: \n")
+            output_file.write("Prior probability of blue class (halo):")
+            output_file.write(str(apriori[0]))
+            output_file.write("\nPrior probability of green class (monkey):")
+            output_file.write(str(apriori[1]))
+            output_file.write("\nPrior probability of black class (background):")
+            output_file.write(str(apriori[2]))
+            
+            output_file.write("\n\nMeans: \n")
+            output_file.write(str(mean_matrix))
+            output_file.write("\n\nCovs: \n")
+            output_file.write(str(cov_matrix))
+            output_file.write("\n\nDet-covs: \n")
+            output_file.write(str(det_covs))
+            output_file.write("Inverse-cov: \n")
+            output_file.write(str(covs_inv))
+
+            modelo = {
+                'classes':classes,
+                'apriori': apriori,
+                'mean':mean_matrix,
+                'cov': cov_matrix,
+                'cov_det': det_covs,
+                'inverse_cov': covs_inv
+            }
 
 
-        file_pattern = "Monos/Prueba*.jpg"
 
-        file_list = glob.glob(file_pattern)
-        print(file_list)
+            file_pattern = "Monos/Prueba*.jpg"
 
-
-        for img in file_list:
-            img_ = cv2.imread(img)
-            new_shape = (600,600)
-            resized_img = cv2.resize(img_, new_shape)
-            cv2.imwrite(img, resized_img)
+            file_list = glob.glob(file_pattern)
+            # print(file_list)
 
 
-        image_data = np.array([np.array(Image.open(file)) for file in file_list])
+            for img in file_list:
+                img_ = cv2.imread(img)
+                new_shape = (600,600)
+                resized_img = cv2.resize(img_, new_shape)
+                cv2.imwrite(img, resized_img)
 
-        print(image_data[0].shape)
+
+            image_data = np.array([np.array(Image.open(file)) for file in file_list])
+
+            # print(image_data[0].shape)
 
 
 
-        imgs = np.flip(image_data[:,:,:,0:2], 3)
+            imgs = np.flip(image_data[:,:,:,0:2], 3)
 
-        prediction = np.zeros_like(image_data[:,:,:,0].astype(np.uint8))
+            prediction = np.zeros_like(image_data[:,:,:,0].astype(np.uint8))
 
-        for i, image_data_ in enumerate(image_data):
-            prediction[i] = predict(image_data_, modelo)
+            start_time = time.time()
 
-        print(prediction)
+            output_file.write("\n\nTesting: ")
+            # ttime = 0
+            for i, image_data_ in enumerate(image_data):
+                prediction[i] = predict(image_data_, modelo)
+                # ttime = ttime+time_
+                # output_file.write("\nTime spent on Bayes discriminator on each image: ")
+                # output_file.write(str(ttime))
 
-        # Create images based on prediction
+            # print(prediction)
+            
+            # output_file.write("\nTotal discriminator time: ")
+            # output_file.write(str(ttime))
+            output_file.write("\nTest time (image preparation and discriminator): ")
+            output_file.write(str(time.time() - start_time))
+            # Create images based on prediction
 
-        cont=0
-        for x in prediction:
-            print(x)
-            img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
-            for i in range(x.shape[0]):
-                for j in range(x.shape[1]):
-                    if x[i, j] == 1:
-                        img.putpixel((j, i), (255, 255, 255))  # white for monkey
-                    elif x[i, j] == 0:
-                        img.putpixel((j, i), (180, 180, 180))  # grey for halo
-                    elif x[i, j] == 2:
-                        img.putpixel((j, i), (70, 70, 70))  # darker grey for background
+            cont=0
+            for x in prediction:
+                print(x)
+                img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
+                for i in range(x.shape[0]):
+                    for j in range(x.shape[1]):
+                        if x[i, j] == 1:
+                            img.putpixel((j, i), (255, 255, 255))  # white for monkey
+                        elif x[i, j] == 0:
+                            img.putpixel((j, i), (180, 180, 180))  # grey for halo
+                        elif x[i, j] == 2:
+                            img.putpixel((j, i), (70, 70, 70))  # darker grey for background
 
-            img.show()
-            cont += 1
-            img.save(f'resultado_monkey{cont}.png')
+                img.show()
+                cont += 1
+                img.save(f'resultado_monkey{cont}.png')
 
 
 
@@ -91,58 +133,93 @@ def BayesRGB(monkey_fruit):
 
 
     elif monkey_fruit == 2: # fruit images to classify
-        num_classes = 4
-        apriori = apriori_probability(2, num_classes)
-        mean_matrix, cov_matrix, det_covs, covs_inv = mean_cov_matrix(2, num_classes, apriori)
+        with open("BayesianClassifierResults.txt", "a") as output_file:
+            start_time = time.time()
+
+            num_classes = 4
+            apriori = apriori_probability(2, num_classes)
+            mean_matrix, cov_matrix, det_covs, covs_inv = mean_cov_matrix(2, num_classes, apriori)
+
+            now = datetime.datetime.now()
+
+            output_file.write("\n\n##############################################################\n\nBayesian classifier for fruit images. \nRan on ")
+            output_file.write(now.strftime("%Y-%m-%d %H:%M:%S"))
+            output_file.write("\nTrain time: ")
+            output_file.write(str(time.time() - start_time))
+            output_file.write("\n")
+
+            output_file.write("\n\nTraining: ")
+            output_file.write("\n\nPrior probabilities: \n")
+            output_file.write("Prior probability of red class (eggs):")
+            output_file.write(str(apriori[0]))
+            output_file.write("\nPrior probability of blue class (chillies):")
+            output_file.write(str(apriori[1]))
+            output_file.write("\nPrior probability of green class (bananas):")
+            output_file.write(str(apriori[2]))
+            output_file.write("\nPrior probability of black class (background):")
+            output_file.write(str(apriori[2]))
+            
+            output_file.write("\n\nMeans: \n")
+            output_file.write(str(mean_matrix))
+            output_file.write("\n\nCovs: \n")
+            output_file.write(str(cov_matrix))
+            output_file.write("\n\nDet-covs: \n")
+            output_file.write(str(det_covs))
+            output_file.write("Inverse-cov: \n")
+            output_file.write(str(covs_inv))
 
 
-        classes = {0:'banana', 1:'huevo', 2:'chile', 3:'fondo'}
+            classes = {0:'banana', 1:'huevo', 2:'chile', 3:'fondo'}
 
-        modelo = {  
-            'classes':classes,
-            'apriori': apriori,
-            'mean':mean_matrix,
-            'cov': cov_matrix,
-            'cov_det': det_covs,
-            'inverse_cov': covs_inv
-        }
+            modelo = {  
+                'classes':classes,
+                'apriori': apriori,
+                'mean':mean_matrix,
+                'cov': cov_matrix,
+                'cov_det': det_covs,
+                'inverse_cov': covs_inv
+            }
 
-        file_pattern = "ImagenesPrueba/Prueba*.jpg"
+            file_pattern = "ImagenesPrueba/Prueba*.jpg"
 
-        file_list = glob.glob(file_pattern)
-        print(file_list)
+            file_list = glob.glob(file_pattern)
+            print(file_list)
 
-        image_data = np.array([np.array(Image.open(file)) for file in file_list])
+            image_data = np.array([np.array(Image.open(file)) for file in file_list])
 
-        imgs = np.flip(image_data[:,:,:,0:2], 3)
+            imgs = np.flip(image_data[:,:,:,0:2], 3)
 
-        prediction = np.zeros_like(image_data[:,:,:,0].astype(np.uint8))
+            prediction = np.zeros_like(image_data[:,:,:,0].astype(np.uint8))
 
-        for i, image_data_ in enumerate(image_data):
-            prediction[i] = predict(image_data_, modelo)
+            start_time = time.time()
 
-        print(prediction)
+            output_file.write("\n\nTesting: ")
+            for i, image_data_ in enumerate(image_data):
+                prediction[i] = predict(image_data_, modelo)
 
-        # Create images based on prediction
+            
+            output_file.write("\nTest time (image preparation and discriminator): ")
+            output_file.write(str(time.time() - start_time))
+            # Create images based on prediction
 
-        cont=0
-        for x in prediction:
-            print(x)
-            img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
-            for i in range(x.shape[0]):
-                for j in range(x.shape[1]):
-                    if x[i, j] == 0:
-                        img.putpixel((j, i), (255, 255, 0))  # yellow
-                    elif x[i, j] == 1:
-                        img.putpixel((j, i), (255, 255, 255))  # white
-                    elif x[i, j] == 2:
-                        img.putpixel((j, i), (0, 255, 0))  # green
-                    elif x[i, j] == 3:
-                        img.putpixel((j, i), (255, 0, 0))  # red : background
+            cont=0
+            for x in prediction:
+                print(x)
+                img = Image.new('RGB', (x.shape[1], x.shape[0]))#, color='black')
+                for i in range(x.shape[0]):
+                    for j in range(x.shape[1]):
+                        if x[i, j] == 0:
+                            img.putpixel((j, i), (255, 255, 0))  # yellow
+                        elif x[i, j] == 1:
+                            img.putpixel((j, i), (255, 255, 255))  # white
+                        elif x[i, j] == 2:
+                            img.putpixel((j, i), (0, 255, 0))  # green
+                        elif x[i, j] == 3:
+                            img.putpixel((j, i), (255, 0, 0))  # red : background
 
-            img.show()
-            cont += 1
-            img.save(f'resultado{cont}.png')
+                img.show()
+                cont += 1
+                img.save(f'resultado{cont}.png')
 
 
     else:
@@ -178,9 +255,9 @@ def apriori_probability(monkey_fruit, num_classes):
         total_pixels = np.sum(class_counts)
         class_probs = class_counts / total_pixels
 
-        print("Prior probability of blue class (halo):", class_probs[0])
-        print("Prior probability of green class (monkey):", class_probs[1])
-        print("Prior probability of black class (background):", class_probs[2])
+        # print("Prior probability of blue class (halo):", class_probs[0])
+        # print("Prior probability of green class (monkey):", class_probs[1])
+        # print("Prior probability of black class (background):", class_probs[2])
 
         return class_probs
 
@@ -265,7 +342,7 @@ def mean_cov_matrix(monkey_fruit, num_classes, apriori):
         RGB_class_list_means = []
         x=0
         for class_list in num_images_per_class:
-            print(class_list)
+            # print(class_list)
             df_rgb_means = []
             for image in class_list:
                 image = image.replace("\\", "/")
@@ -281,9 +358,9 @@ def mean_cov_matrix(monkey_fruit, num_classes, apriori):
             
             x+=1
 
-            print(f"\n\nClase {x} RGB DataFrame:\n ",df_rgb_means)
-            print(f"\nClass {x} mean matrix: \n", df_rgb_means.mean())
-            print(f"\nClass {x} cov matrix: \n", df_rgb_means.cov())
+            # print(f"\n\nClase {x} RGB DataFrame:\n ",df_rgb_means)
+            # print(f"\nClass {x} mean matrix: \n", df_rgb_means.mean())
+            # print(f"\nClass {x} cov matrix: \n", df_rgb_means.cov())
 
             rgb_means = df_rgb_means.to_numpy()
 
@@ -296,8 +373,8 @@ def mean_cov_matrix(monkey_fruit, num_classes, apriori):
             RGB_class_list_means.append(mean_matrix)
 
 
-        print("Covs: \n\n", RGB_class_list_covs)
-        print("\n\nMeans: \n\n", RGB_class_list_means)
+        # print("Covs: \n\n", RGB_class_list_covs)
+        # print("\n\nMeans: \n\n", RGB_class_list_means)
 
 
         # Covariance Matrix
@@ -309,8 +386,8 @@ def mean_cov_matrix(monkey_fruit, num_classes, apriori):
             covs_inv[k] = np.linalg.inv(np.matrix(RGB_class_list_covs[k]))
 
 
-        print("\n\ndet-covs", det_covs,"\n\n\n")
-        print("inverse-cov", covs_inv, "\n\n\n")
+        # print("\n\ndet-covs", det_covs,"\n\n\n")
+        # print("inverse-cov", covs_inv, "\n\n\n")
 
         return RGB_class_list_means, RGB_class_list_covs, det_covs, covs_inv      
 

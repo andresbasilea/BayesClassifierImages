@@ -1,0 +1,68 @@
+Bayesian classifier for monkey images. Ran on 2023-04-07 18:15:06Train time: Bayesian classifier for monkey images. Ran on 2023-04-07 18:15:41Train time: 0.1934678554534912
+
+Training: 
+
+Prior probabilities: 
+Prior probability of blue class (halo):Bayesian classifier for monkey images. Ran on 2023-04-07 18:16:12Train time: 0.1876661777496338
+
+Training: 
+
+Prior probabilities: 
+Prior probability of blue class (halo):Bayesian classifier for monkey images. Ran on 2023-04-07 18:16:46Train time: 0.1848621368408203
+
+Training: 
+
+Prior probabilities: 
+Prior probability of blue class (halo):Bayesian classifier for monkey images. Ran on 2023-04-07 18:17:01Train time: 0.19649147987365723
+
+Training: 
+
+Prior probabilities: 
+Prior probability of blue class (halo):0.0Prior probability of green class (monkey):0.074923488463525Prior probability of black class (background):0.925076511536475
+
+Means: 
+Bayesian classifier for monkey images. Ran on 2023-04-07 18:17:19Train time: 0.20371246337890625
+
+Training: 
+
+Prior probabilities: 
+Prior probability of blue class (halo):0.0Prior probability of green class (monkey):0.08015197933408114Prior probability of black class (background):0.9198480206659189
+
+Means: 
+[array([31.81530927, 36.50075156, 39.14056666]), array([58.86088374, 62.97544382, 61.25736154]), array([133.52047429, 149.75469729, 103.57882164])]
+
+Covs: 
+Bayesian classifier for monkey images. Ran on 2023-04-07 18:17:47Train time: 0.1995227336883545
+
+Training: 
+
+Prior probabilities: 
+Prior probability of blue class (halo):0.0Prior probability of green class (monkey):0.09434531858290199Prior probability of black class (background):0.905654681417098
+
+Means: 
+[array([28.97853718, 33.77397177, 33.89941244]), array([50.03464902, 52.85817843, 52.81498354]), array([136.04690092, 152.53827874, 105.61972871])]
+
+Covs: 
+[array([[ 668.27591236,  740.48476161,  665.22774896],
+       [ 740.48476161,  953.76269881,  706.24685641],
+       [ 665.22774896,  706.24685641, 1042.78374699]]), array([[2434.7742051 , 2445.87303066, 2357.59912168],
+       [2445.87303066, 2560.7891105 , 2339.64435039],
+       [2357.59912168, 2339.64435039, 2586.92353579]]), array([[2709.09137846, 2391.28540879, 2608.08883348],
+       [2391.28540879, 2469.65004384, 2251.02958306],
+       [2608.08883348, 2251.02958306, 3428.32232073]])]
+
+Det-covs: 
+[3.32585296e+07 7.48128203e+07 8.84946782e+08]Inverse-cov: 
+[[[ 0.01490696 -0.00909092 -0.00335266]
+  [-0.00909092  0.00764734  0.00062009]
+  [-0.00335266  0.00062009  0.00267778]]
+
+ [[ 0.01538012 -0.01084497 -0.00420838]
+  [-0.01084497  0.00989538  0.0009341 ]
+  [-0.00420838  0.0009341   0.00337707]]
+
+ [[ 0.00384161 -0.00262978 -0.00119579]
+  [-0.00262978  0.00280866  0.00015644]
+  [-0.00119579  0.00015644  0.00109867]]]
+
+Testing: Test time: 94.99169158935547
