@@ -157,7 +157,7 @@ def BayesRGB(monkey_fruit):
             output_file.write("\nPrior probability of green class (bananas):")
             output_file.write(str(apriori[2]))
             output_file.write("\nPrior probability of black class (background):")
-            output_file.write(str(apriori[2]))
+            output_file.write(str(apriori[3]))
             
             output_file.write("\n\nMeans: \n")
             output_file.write(str(mean_matrix))
